@@ -12,7 +12,7 @@ class PercentileFeedback(object):
         self.full_data = obs.Observable(None)
         # plot data is the seconds worked each day
         self.plot_data = obs.Observable(None)
-        self.t = timehelper.TimeHelper()
+        self.t = timehelper.TimeHelper(config)
         self.a = togglapi.TogglAPI(config.API_TOKEN, config.TIMEZONE);
         self.config = config
 
@@ -57,7 +57,7 @@ class PercentileFeedback(object):
         if time_entries == None:
             return 0
         seconds_tracked = [entry['duration'] for entry in time_entries if self.config.FILTER_TAG in entry['tags']]
-        total_seconds_tracked = sum(x if x > 0 else x + t.secs_since_epoch for x in seconds_tracked)
+        total_seconds_tracked = sum(x if x > 0 else x + self.t.secs_since_epoch for x in seconds_tracked)
 
         return total_seconds_tracked
 
