@@ -41,7 +41,7 @@ class PlotWindow(tk.Toplevel):
         num_steps_x = self.data_max_x
         if plotwidth/self.data_max_x < 20:
             num_steps_x = plotwidth/20
-        step_x = plotwidth/num_steps_x
+        step_x = float(plotwidth)/num_steps_x
         # label_step_x is the increment of the number below the markings
         label_step_x = float(self.data_max_x)/float(num_steps_x)
 
@@ -54,7 +54,7 @@ class PlotWindow(tk.Toplevel):
         num_steps_y = self.data_max_y
         if plotheight/self.data_max_y < 20:
             num_steps_y = plotheight/20
-        step_y = plotheight/num_steps_y
+        step_y = float(plotheight)/num_steps_y
         label_step_y = float(self.data_max_y)/float(num_steps_y)
 
         for i in range(num_steps_y):
