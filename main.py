@@ -28,11 +28,13 @@ class Controller:
 
     # Called through the Observable 
     def percentage_changed(self, perc):
+        """If the Observable notifies us that the percentage has changed, update the view"""
         self.view.set_percentile(perc)
 
 
     # Called through the Observable 
     def plot_data_changed(self, plot_data):
+        """If the Observable notifies us that the plot data has changed, show the plot"""
         if not self.plot == None:
             self.plot.destroy()
             self.plot = None

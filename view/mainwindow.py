@@ -33,4 +33,5 @@ class MainWindow(tk.Toplevel):
 
 
     def set_percentile(self, content):
+        """Sets the percentile displayed in the window"""
         self.refreshButton.config(text=content)

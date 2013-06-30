@@ -8,7 +8,9 @@ import togglapi.api as togglapi
 class PercentileFeedback(object):
     def __init__(self, config):
         self.percentage = obs.Observable('0.00 %')
+        # full data is the raw toggl data since START_DATA
         self.full_data = obs.Observable(None)
+        # plot data is the seconds worked each day
         self.plot_data = obs.Observable(None)
         self.t = timehelper.TimeHelper()
         self.a = togglapi.TogglAPI(config.API_TOKEN, config.TIMEZONE);
@@ -17,6 +19,7 @@ class PercentileFeedback(object):
 
     # this is triggered by the Refresh button
     def refresh_percentile(self):
+        """Recalculate the percentile with respect to your efficiency on past days"""
         # extract the relevant data (if it’s 10AM, the time spent working before 10AM) from the toggl data
         self.refresh_full_data()
         full_data = self.full_data.get()
@@ -43,6 +46,7 @@ class PercentileFeedback(object):
 
 
     def refresh_full_data(self):
+        """This is called to make sure full_data contains the toggl data"""
         if self.full_data.get() == None:
             self.full_data.set(self.a.get_time_entries(start_date=self.config.START_DATA, end_date=self.t.now.isoformat()))
 
@@ -80,6 +84,7 @@ class PercentileFeedback(object):
 
 
     def _secs_each_day(self, sorted_entries):
+        """Calculates how many seconds you’ve worked each day, from the preprocessed toggl data"""
         # we only want the time we’ve worked in the time before
         # now for each day, add up all the entries for which end < now
         time_right_now = self.t.now.time()
@@ -127,6 +132,7 @@ class PercentileFeedback(object):
 
 
     def _stops_before(self, entry, time, rollover_time):
+        """Checks if an entry stopped before a given time"""
         # we can’t simply do entry['dtstop'].time() < time_right_now
         # because that would also be true for tasks stopping at 1AM
         if time < rollover_time:

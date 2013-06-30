@@ -30,6 +30,7 @@ class TimeHelper(object):
 
 
 	def to_datetime(self, time_string):
+		"""Converts a string containing a date and a time into a datetime object"""
 		dtime = datetime.datetime.strptime(time_string, "%Y-%m-%dT%H:%M:%S+00:00")
 		# TEMPORARY HACK
 		return dtime + datetime.timedelta(hours=2)
@@ -45,6 +46,7 @@ class TimeHelper(object):
 
 
 	def days_since(self):
+		"""Creates a list of dates since the START_DATA date"""
 		days = []
 		begin = datetime.datetime.strptime('2013-06-19T08:00:00+00:00', "%Y-%m-%dT%H:%M:%S+00:00")
 		thismorning = self.this_morning
@@ -57,8 +59,10 @@ class TimeHelper(object):
 
 
 	def secs_to_fraction(self, secs):
+		"""Converts a number of seconds into a fraction of the time since WAKE_TIME"""
 		now = self.now
 		begin = datetime.datetime.combine(datetime.date.today(), self.beginofday)
+		
 		if now < begin:
 			begin = begin - datetime.timedelta(days=1)
 		awake_time = (now-begin).total_seconds()

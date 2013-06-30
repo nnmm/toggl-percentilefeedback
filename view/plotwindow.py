@@ -13,23 +13,24 @@ class PlotWindow(tk.Toplevel):
         self.canvas = tk.Canvas(self, width=self.width, height=self.height, bg='white', highlightthickness=0)
         self.canvas.pack()
 
+
     def make_point(self, x, y):
+        """Creates a dot from a pair of values"""
         x_c = self.margin + float(x)/float(self.data_max_x)*(self.width - 2*self.margin)
         y_c = self.height - self.margin + float(y)/float(self.data_max_y)*(2*self.margin-self.height)
         self.canvas.create_oval(x_c-6, y_c-6, x_c+6, y_c+6, width=1, fill='SkyBlue2', outline='')
 
 
-    def _init(self, plot_data):
-        self.data_max_x = len(plot_data)
-        self.data_max_y = max(plot_data)
-        self.draw_axes()
-
-    def draw_axes(self):
+    def draw_axes(self, plot_data):
+        """Draws and labels the axes"""
         # helper variables, all in pixels
         x0 = self.margin
         y0 = self.height - self.margin
         plotwidth = self.width - 2*self.margin
         plotheight = self.height - 2*self.margin
+
+        self.data_max_x = len(plot_data)
+        self.data_max_y = max(plot_data)
 
         # draw x and y axes
         self.canvas.create_line(0, y0, self.width, y0)
@@ -63,8 +64,8 @@ class PlotWindow(tk.Toplevel):
         
 
     def draw_plot(self, plot_data):
-        # TODO
+        """Scales the values and creates the plot"""
         percentages = [float(x)/576.0 for x in plot_data]
-        self._init(percentages)
+        self.draw_axes(percentages)
         for (x, y) in zip(range(self.data_max_x), percentages):
             self.make_point(x, y)
