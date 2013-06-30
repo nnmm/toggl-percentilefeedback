@@ -6,10 +6,10 @@ import time
 
 class TimeHelper(object):
 	"""Time helper functions"""
-	def __init__(self):
-		# TODO: Put this in the config
-		self.beginofday = datetime.time(8)
-
+	def __init__(self, config):
+		self.timezone = config.TIMEZONE
+		self.waketime = datetime.datetime.strptime(config.WAKE_TIME, "%H:%M:%S").time()
+		self.bedtime = datetime.datetime.strptime(config.BED_TIME, "%H:%M:%S").time()
 
 	@property
 	def secs_since_epoch(self):
@@ -23,7 +23,7 @@ class TimeHelper(object):
 
 	@property
 	def this_morning(self):
-		morning = datetime.datetime.combine(datetime.date.today(), self.beginofday)
+		morning = datetime.datetime.combine(datetime.date.today(), self.waketime)
 		if self.now < morning:
 			morning = morning - datetime.timedelta(days=1)
 		return morning
@@ -38,7 +38,7 @@ class TimeHelper(object):
 
 	def last_n_days(self, num_days):
 		oneday = datetime.timedelta(days=1)
-		thismorning = datetime.datetime.combine(datetime.date.today(), self.beginofday)
+		thismorning = datetime.datetime.combine(datetime.date.today(), self.waketime)
 		if thismorning > self.now:
 			thismorning = thismorning - datetime.timedelta(days=1)
 		# if num_days is 2 and today is wednesday, this returns monday, tuesday and wednesday morning
@@ -61,8 +61,8 @@ class TimeHelper(object):
 	def secs_to_fraction(self, secs):
 		"""Converts a number of seconds into a fraction of the time since WAKE_TIME"""
 		now = self.now
-		begin = datetime.datetime.combine(datetime.date.today(), self.beginofday)
-		
+		begin = datetime.datetime.combine(datetime.date.today(), self.waketime)
+
 		if now < begin:
 			begin = begin - datetime.timedelta(days=1)
 		awake_time = (now-begin).total_seconds()

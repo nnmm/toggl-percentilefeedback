@@ -12,6 +12,7 @@ class PercentileFeedback(object):
         self.full_data = obs.Observable(None)
         # plot data is the seconds worked each day
         self.plot_data = obs.Observable(None)
+        # not sure if passing the config like this is ideal. If you read this and have wisdom to share, I’d be glad.
         self.t = timehelper.TimeHelper(config)
         self.a = togglapi.TogglAPI(config.API_TOKEN, config.TIMEZONE);
         self.config = config
