@@ -1,0 +1,16 @@
+# Toggl API Token
+API_TOKEN             = '12312312312312312312312312313123'
+
+FILTER_TAG            = u'work'
+
+START_DATA            = '2013-06-19T08:00:00'
+
+# When does the day begin, when does it end?
+WAKE_TIME             = '08:00:00'
+BED_TIME              = '23:59:59'
+
+# Timezone
+TIMEZONE              = '+02:00'
+
+# Should the window always be in the front?
+TOPMOST               = True
