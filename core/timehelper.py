@@ -33,8 +33,7 @@ class TimeHelper(object):
 	def to_datetime(self, time_string):
 		"""Converts a string containing a date and a time into a datetime object"""
 		dtime = datetime.datetime.strptime(time_string, "%Y-%m-%dT%H:%M:%S+00:00")
-		# TEMPORARY HACK
-		return dtime + datetime.timedelta(hours=2)
+		return dtime + datetime.timedelta(hours=int(self.timezone[:3]))
 
 
 	def which_day_is(self, day):
