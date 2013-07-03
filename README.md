@@ -17,6 +17,13 @@ I’m running Python 2.7.3 32 bit on Windows, but I think it should work with ot
 * Rename config.py-example to config.py and replace the dummy API token with yours (you can find it in your [toggl profile](https://www.toggl.com/user/edit))
 * Run main.py
 
+## Issues ##
+There are still a few things to do:
+* Time zones are not fully implemented yet (see line 36 in timehelper.py)
+* X and y axes need to be labeled with day and efficiency, respectively
+* It might be good to seperate the time at which you wake up and the time at which a new day begins
+* Better handling of time entries in the past that start before and end after the current time (see line 99 in model.py)
+
 ## Questions and comments ##
 I appreciate any comments, including comments on my English here and suggestions for improving the structure of the program. Contact me for any questions you might have.
 
