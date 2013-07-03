@@ -57,8 +57,7 @@ class PercentileFeedback(object):
 
     def refresh_full_data(self):
         """This is called to make sure full_data contains the toggl data"""
-        if self.full_data.get() == None:
-            self.full_data.set(self.a.get_time_entries(start_date=self.config.START_DATA, end_date=self.t.now.isoformat()))
+        self.full_data.set(self.a.get_time_entries(start_date=self.config.START_DATA, end_date=self.t.now.isoformat()))
 
 
     def _extract_relevant_data(self, time_entries):
