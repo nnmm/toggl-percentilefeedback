@@ -4,6 +4,7 @@
 import observable as obs
 import timehelper
 import togglapi.api as togglapi
+import itertools
 
 class PercentileFeedback(object):
     def __init__(self, config):
@@ -24,9 +25,8 @@ class PercentileFeedback(object):
         # extract the relevant data (if it’s 10AM, the time spent working before 10AM) from the toggl data
         self.refresh_full_data()
         full_data = self.full_data.get()
-        data = self._prepare_data(full_data)
-        sorted_entries = self._sort_by_day(data)
-        durations = self._secs_each_day(sorted_entries)
+        processed_entries = self._extract_relevant_data(full_data)
+        durations = self._secs_each_day(processed_entries)
 
         # calculate the seconds worked today
         start_date = self.t.this_morning
@@ -46,6 +46,25 @@ class PercentileFeedback(object):
     	self.percentage.set('{0:.2f} %'.format(percentile))
 
 
+    # this is triggered by the Plot button
+    def refresh_plot_data(self):
+        """Returns the seconds worked for each day in the past, including today"""
+        # extract the relevant data (if it’s 10AM, the time spent working before 10AM) from the toggl data
+        self.refresh_full_data()
+        full_data = self.full_data.get()
+        processed_entries = self._extract_relevant_data(full_data)
+        durations = self._secs_each_day(processed_entries, full_day=True)
+
+        # calculate the seconds worked today
+        start_date = self.t.this_morning
+        end_date = self.t.now
+        entries = self.a.get_time_entries(start_date.isoformat(), end_date.isoformat())
+        secs = self._count_seconds(entries)
+
+        durations.append(secs)
+        self.plot_data.set(durations)
+
+
     def refresh_full_data(self):
         """This is called to make sure full_data contains the toggl data"""
         if self.full_data.get() == None:
@@ -63,76 +82,29 @@ class PercentileFeedback(object):
         return total_seconds_tracked
 
 
-    def _sort_by_day(self, data):
-        """Creates a list of lists of time_entries, one for every day"""
-        # this is probably pretty shitty
-        days = self.t.days_since()
-        previous_day = days[0]
-        sorted_entries = []
-
-        # for all days we’re looking at:
-        for day in days[1:]:
-            tmp = []
-            # put those between that day and the previous day into a list
-            for entry in data:
-                # we’re only looking at the start date
-                if previous_day < entry['dtstart'] < day:
-                    tmp.append(entry)
-            # so we have a list of entries for each day
-            sorted_entries.append(tmp)
-            previous_day = day
-        return sorted_entries
-
-
-    def _secs_each_day(self, sorted_entries):
+    def _secs_each_day(self, entries, full_day=False):
         """Calculates how many seconds you’ve worked each day, from the preprocessed toggl data"""
+        # group all the entries on the same day
+        groups = []
+        for k, g in itertools.groupby(entries, lambda entry : entry['day']):
+            groups.append(list(g))    # Store group iterator as a list
+
         # we only want the time we’ve worked in the time before
         # now for each day, add up all the entries for which end < now
         time_right_now = self.t.now.time()
         # durations contains the total seconds worked until the current time for each day
         durations = []
-        for entry_list in sorted_entries:
+        for entry_list in groups:
             secs = 0
             for entry in entry_list:
                 # in the future, maybe also count non-finished tasks
-                if self._stops_before(entry, time_right_now, self.t.this_morning.time()):
+                if full_day or self._starts_before(entry, time_right_now, self.t.this_morning.time()):
                     secs = secs + entry['duration']
             durations.append(secs)
         return durations
 
 
-    def _prepare_data(self, time_entries):
-        """Weeds out time entries without the relevant tag and converts time strings to datetime objects"""
-        filtered_data = [entry for entry in time_entries if self.config.FILTER_TAG in entry['tags']]
-
-        # convert the string for start and stop time to a datetime object and store it in the dict
-        for entry in filtered_data:
-            entry['dtstart'] = self.t.to_datetime(entry['start'])
-            if 'stop' in entry:
-                entry['dtstop'] = self.t.to_datetime(entry['stop'])
-        return filtered_data
-    
-
-    def refresh_plot_data(self):
-        """Returns the seconds worked for each day in the past, including today"""
-        # extract the relevant data (if it’s 10AM, the time spent working before 10AM) from the toggl data
-        self.refresh_full_data()
-        full_data = self.full_data.get()
-        data = self._prepare_data(full_data)
-        sorted_entries = self._sort_by_day(data)
-        durations = self._secs_each_day(sorted_entries)
-
-        # calculate the seconds worked today
-        start_date = self.t.this_morning
-        end_date = self.t.now
-        entries = self.a.get_time_entries(start_date.isoformat(), end_date.isoformat())
-        secs = self._count_seconds(entries)
-
-        durations.append(secs)
-        self.plot_data.set(durations)
-
-
-    def _stops_before(self, entry, time, rollover_time):
+    def _starts_before(self, entry, time, rollover_time):
         """Checks if an entry stopped before a given time"""
         # we can’t simply do entry['dtstop'].time() < time_right_now
         # because that would also be true for tasks stopping at 1AM
@@ -142,6 +114,24 @@ class PercentileFeedback(object):
                 return True
         else:
             # count all entries between 8 and time.hour
-            if rollover_time < entry['dtstop'].time() < time:
+            if rollover_time < entry['dtstart'].time() < time:
                 return True
         return False
+
+
+    def _extract_relevant_data(self, time_entries):
+        """From the raw time entries, returns a new list with start, stop, duration and day in a different format"""
+        
+        # Weed out time entries without the relevant tag and converts time strings to datetime objects
+        processed_entries = []
+        for entry in time_entries:
+            if self.config.FILTER_TAG in entry['tags']:
+                # create datetime objects from the start and stop keys in the dict
+                # important: time_entries must contain no running time entries, or there is no 'stop' key!
+                start = self.t.to_datetime(entry['start'])
+                stop = self.t.to_datetime(entry['stop'])
+                duration = entry['duration']
+                day = self.t.which_day_is(start)
+                new_entry = {'dtstart' : start, 'dtstop' : stop, 'duration' : duration, 'day' : day}
+                processed_entries.append(new_entry)
+        return processed_entries

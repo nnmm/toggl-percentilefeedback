@@ -67,3 +67,12 @@ class TimeHelper(object):
 			begin = begin - datetime.timedelta(days=1)
 		awake_time = (now-begin).total_seconds()
 		return secs/awake_time
+
+
+	def which_day_is(self, day):
+		"""Finds out which date the given datetime belongs to"""
+		if day.time() > self.waketime:
+			return day.date()
+		else:
+			# if it’s before wake time, it belongs to the previous day
+			return (day - datetime.timedelta(days=1)).date()
