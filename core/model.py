@@ -28,19 +28,16 @@ class PercentileFeedback(object):
         processed_entries = self._extract_relevant_data(full_data)
         durations = self._secs_each_day(processed_entries)
 
-        # calculate the seconds worked today
-        start_date = self.t.this_morning
-        end_date = self.t.now
-        entries = self.a.get_time_entries(start_date.isoformat(), end_date.isoformat())
-        secs = self._count_seconds(entries)
+        # the last entry of durations is the seconds worked today
+        duration_today = durations.pop()
 
         # calculate percentile
         print('Past durations:')
         print(durations)
         print('Duration today:')
-        print(secs)
+        print(duration_today)
         num_total = len(durations)
-        num_lower = len([d for d in durations if d < secs])
+        num_lower = len([d for d in durations if d < duration_today])
         percentile = float(num_lower)/num_total*100
         # percentage has a callback which updates the tkEntry widget
     	self.percentage.set('{0:.2f} %'.format(percentile))
@@ -55,13 +52,6 @@ class PercentileFeedback(object):
         processed_entries = self._extract_relevant_data(full_data)
         durations = self._secs_each_day(processed_entries, full_day=True)
 
-        # calculate the seconds worked today
-        start_date = self.t.this_morning
-        end_date = self.t.now
-        entries = self.a.get_time_entries(start_date.isoformat(), end_date.isoformat())
-        secs = self._count_seconds(entries)
-
-        durations.append(secs)
         self.plot_data.set(durations)
 
 
@@ -71,15 +61,22 @@ class PercentileFeedback(object):
             self.full_data.set(self.a.get_time_entries(start_date=self.config.START_DATA, end_date=self.t.now.isoformat()))
 
 
-    def _count_seconds(self, time_entries):
-        """Calculates the total duration in seconds of all time entries with the correct tag"""
-        # the negative durations are running time entries
-        if time_entries == None:
-            return 0
-        seconds_tracked = [entry['duration'] for entry in time_entries if self.config.FILTER_TAG in entry['tags']]
-        total_seconds_tracked = sum(x if x > 0 else x + self.t.secs_since_epoch for x in seconds_tracked)
-
-        return total_seconds_tracked
+    def _extract_relevant_data(self, time_entries):
+        """From the raw time entries, returns a new list with description, start, stop, duration and day in a different format"""
+        
+        # Weed out time entries without the relevant tag and converts time strings to datetime objects
+        processed_entries = []
+        for entry in time_entries:
+            if self.config.FILTER_TAG in entry['tags']:
+                # create datetime objects from the start and stop keys in the dict
+                start = self.t.to_datetime(entry['start'])
+                stop = self.t.to_datetime(entry['stop'])
+                duration = entry['duration']
+                day = self.t.which_day_is(start)
+                desc = entry['description']
+                new_entry = {'description' : desc, 'dtstart' : start, 'dtstop' : stop, 'duration' : duration, 'day' : day}
+                processed_entries.append(new_entry)
+        return processed_entries
 
 
     def _secs_each_day(self, entries, full_day=False):
@@ -97,9 +94,15 @@ class PercentileFeedback(object):
         for entry_list in groups:
             secs = 0
             for entry in entry_list:
-                # in the future, maybe also count non-finished tasks
+                # in the future, also include tasks from past days that were still running at the time
+                # with the correct duration (currently they’re counted full if they started before time_right_now)
                 if full_day or self._starts_before(entry, time_right_now, self.t.this_morning.time()):
-                    secs = secs + entry['duration']
+                    # if there is a time entry running right now (on the last day of groups)
+                    # calculate its current duration
+                    duration = entry['duration']
+                    if duration < 0:
+                        duration = duration + + self.t.secs_since_epoch
+                    secs = secs + duration
             durations.append(secs)
         return durations
 
@@ -117,21 +120,3 @@ class PercentileFeedback(object):
             if rollover_time < entry['dtstart'].time() < time:
                 return True
         return False
-
-
-    def _extract_relevant_data(self, time_entries):
-        """From the raw time entries, returns a new list with start, stop, duration and day in a different format"""
-        
-        # Weed out time entries without the relevant tag and converts time strings to datetime objects
-        processed_entries = []
-        for entry in time_entries:
-            if self.config.FILTER_TAG in entry['tags']:
-                # create datetime objects from the start and stop keys in the dict
-                # important: time_entries must contain no running time entries, or there is no 'stop' key!
-                start = self.t.to_datetime(entry['start'])
-                stop = self.t.to_datetime(entry['stop'])
-                duration = entry['duration']
-                day = self.t.which_day_is(start)
-                new_entry = {'dtstart' : start, 'dtstop' : stop, 'duration' : duration, 'day' : day}
-                processed_entries.append(new_entry)
-        return processed_entries
