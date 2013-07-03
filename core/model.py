@@ -4,7 +4,6 @@
 import observable as obs
 import timehelper
 import togglapi.api as togglapi
-import itertools
 
 class PercentileFeedback(object):
     def __init__(self, config):
@@ -57,7 +56,9 @@ class PercentileFeedback(object):
 
     def refresh_full_data(self):
         """This is called to make sure full_data contains the toggl data"""
-        self.full_data.set(self.a.get_time_entries(start_date=self.config.START_DATA, end_date=self.t.now.isoformat()))
+        start = self.config.START_DATE + 'T' + self.config.WAKE_TIME
+        end = self.t.now.isoformat()
+        self.full_data.set(self.a.get_time_entries(start_date=start, end_date=end))
 
 
     def _extract_relevant_data(self, time_entries):
@@ -69,8 +70,13 @@ class PercentileFeedback(object):
             if self.config.FILTER_TAG in entry['tags']:
                 # create datetime objects from the start and stop keys in the dict
                 start = self.t.to_datetime(entry['start'])
-                stop = self.t.to_datetime(entry['stop'])
                 duration = entry['duration']
+                # running time entries don’t have a 'stop' key
+                if 'stop' in entry:
+                    stop = self.t.to_datetime(entry['stop'])
+                else:
+                    # this is okay for now
+                    stop = start
                 day = self.t.which_day_is(start)
                 desc = entry['description']
                 new_entry = {'description' : desc, 'dtstart' : start, 'dtstop' : stop, 'duration' : duration, 'day' : day}
@@ -81,9 +87,7 @@ class PercentileFeedback(object):
     def _secs_each_day(self, entries, full_day=False):
         """Calculates how many seconds you’ve worked each day, from the preprocessed toggl data"""
         # group all the entries on the same day
-        groups = []
-        for k, g in itertools.groupby(entries, lambda entry : entry['day']):
-            groups.append(list(g))    # Store group iterator as a list
+        groups = self._group_by_day(entries)
 
         # we only want the time we’ve worked in the time before
         # now for each day, add up all the entries for which end < now
@@ -106,13 +110,23 @@ class PercentileFeedback(object):
         return durations
 
 
+    def _group_by_day(self, entries):
+        # we can’t just use itertools.groupby() because the resulting list wouldn’t contain dates without entries
+        groups = []
+        days = self.t.get_list_of_days()
+        for day in days:
+            entries_that_day = filter(lambda entry : entry['day'] == day, entries)
+            groups.append(entries_that_day)
+        return groups
+
+
     def _starts_before(self, entry, time, rollover_time):
         """Checks if an entry stopped before a given time"""
         # we can’t simply do entry['dtstop'].time() < time_right_now
         # because that would also be true for tasks stopping at 1AM
         if time < rollover_time:
             # count all entries where entry.hour > 8 or entry.hour < time.hour
-            if entry['dtstop'].time() > rollover_time or entry['dtstop'].time() < time:
+            if entry['dtstart'].time() > rollover_time or entry['dtstart'].time() < time:
                 return True
         else:
             # count all entries between 8 and time.hour
